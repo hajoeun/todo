@@ -1,7 +1,17 @@
-var temp_db = {
-  a: {title: 'hello', completed: true},
-  b: {title: 'bye', completed: false}
-};
+window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+
+window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
+window.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange
+
+if (!window.indexedDB) {
+  window.alert("Your browser doesn't support a stable version of IndexedDB.")
+}
+
+var temp_db = [
+  {id: Date.now(), title: 'hello', completed: true},
+  {id: Date.now(), title: 'bye', completed: false}
+];
+
 !function(window) {
 
   var $ = window.D, $1 = window.D1,
@@ -15,11 +25,11 @@ var temp_db = {
        section.main\
         input.toggle-all[type="checkbox"]\
         label[for="toggle-all"] Mark all as complete\
-        ul.todo-list {{_.go(data, _.keys,', lo.list = _.teach("id", "\
-          li.{{temp_db[id].completed ? 'completed' : ''}}[data-id={{id}}] \
-            input.toggle[type=checkbox {{temp_db[id].completed ? 'checked' : ''}}]\
-            label {{temp_db[id].title}}\
-            button.delete\
+        ul.todo-list {{_.go(data, ', lo.list = _.teach("d", "\
+          li.{{d.completed ? 'completed' : ''}}[data-id={{d.id}}] \
+            input.toggle[type=checkbox {{d.completed ? 'checked' : ''}}]\
+            label {{d.title}}\
+            button.delete Delete\
         "),')}}\
       footer.footer\
         span.todo-count\
@@ -31,25 +41,33 @@ var temp_db = {
   ');
 
   lo.save = function(title, id) {
-    if (id) temp_db[id].title = title;
-    else {
-      id = Date.now();
-      temp_db[id] = { title: title, completed: false };
+    var li;
+    if (id) {
+      li = _.find(temp_db, function(d) { return d.id == id; });
+      li.title = title;
     }
-    return id;
+    else {
+      li = { id: id = Date.now(), title: title, completed: false };
+      temp_db.push(li);
+    }
+    return li;
   };
 
   lo.toggle = function(id) {
-    temp_db[id].completed = !temp_db[id].completed;
+    var li = _.find(temp_db, function(d) { return d.id == id; });
+    li.completed = !li.completed;
+    return li;
   };
 
   lo.route = function(state) {
-    var data = _.keys(temp_db), predi = function(id) { return temp_db[id].completed; };
+    var show_db = temp_db, predi = function(d) { return d.completed; };
 
-    if (state === 'active') data = _.reject(data, predi);
-    else if (state === 'completed') data = _.filter(data, predi);
+    if (state === 'active')
+      show_db = _.reject(show_db, predi);
+    else if (state === 'completed')
+      show_db = _.filter(show_db, predi);
 
-    $1('.todo-list').innerHTML = lo.list(data);
+    $1('.todo-list').innerHTML = lo.list(show_db);
   };
 
   _.go(temp_db,
@@ -57,9 +75,8 @@ var temp_db = {
     $.append_to('body'),
 
     $.on('keypress', '.new-todo', function(e) {
-      var keyCode = e.keyCode, value = $.val(e.$currentTarget);
-
-      if (value && keyCode == 13) {
+      var value = $.val(e.$currentTarget);
+      if (value && e.keyCode == 13) {
         $.val(e.$currentTarget, '');
         _.go(value,
           lo.save,

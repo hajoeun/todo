@@ -12,10 +12,46 @@ var temp_db = [
   {id: Date.now(), title: 'bye', completed: false}
 ];
 
+var db;
+var request = window.indexedDB.open('todoDB', 1);
+
+request.onerror = function(e) {
+  console.error("error: " + e);
+};
+
+request.onsuccess = function(e) {
+  db = request.result;
+  console.log("success:", db);
+};
+
+request.onupgradeneeded = function(e) {
+  var db = e.target.result;
+  var store = db.createObjectStore('todos', { keyPath: 'id' });
+
+  for (var i in temp_db) store.add(temp_db[i]);
+};
+
+function read(id) {
+  var transaction = db.transaction('todos');
+  var store = transaction.objectStore('todos');
+  var request = store.get(id);
+
+  request.onerror = function(e) {
+    console.error("error: " + e);
+  };
+
+  request.onsuccess = function() {
+    if (request.result)
+      console.log("title: " + request.title);
+    else
+      console.log("no date");
+  };
+}
+
+
 !function(window) {
 
-  var $ = window.D, $1 = window.D1,
-      _ = window._, lo = {};
+  var $ = window.D, $1 = window.D1, _ = window._, lo = {};
 
   var template = _.t('data', '\
     section.todoapp\

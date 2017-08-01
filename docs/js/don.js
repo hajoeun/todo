@@ -534,8 +534,8 @@
     $.text = _(text_or_html, _, _, function(els) { return els.reduce(function(res, el) { return res + el.textContent; }, '') }, 'textContent');
     $.html = _(text_or_html, _, _, function(els) { return els[0].innerHTML }, 'innerHTML');
 
-    $.textTo = function(els) { if (_is_el_or_els(els)) return _($.text, els) };
-    $.htmlTo = function(els) { if (_is_el_or_els(els)) return _($.html, els) };
+    $.textTo = $.text_to = function(els) { if (_is_el_or_els(els)) return _($.text, els) };
+    $.htmlTo = $.html_to = function(els) { if (_is_el_or_els(els)) return _($.html, els) };
 
     function make_insert(type, reverse) {
       function insert(target, elem) {

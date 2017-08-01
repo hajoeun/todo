@@ -1,57 +1,9 @@
-window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-
-window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.msIDBTransaction;
-window.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.msIDBKeyRange
-
-if (!window.indexedDB) {
-  window.alert("Your browser doesn't support a stable version of IndexedDB.")
-}
-
-var temp_db = [
-  {id: Date.now(), title: 'hello', completed: true},
-  {id: Date.now(), title: 'bye', completed: false}
-];
-
-var db;
-var request = window.indexedDB.open('todoDB', 1);
-
-request.onerror = function(e) {
-  console.error("error: " + e);
-};
-
-request.onsuccess = function(e) {
-  db = request.result;
-  console.log("success:", db);
-};
-
-request.onupgradeneeded = function(e) {
-  var db = e.target.result;
-  var store = db.createObjectStore('todos', { keyPath: 'id' });
-
-  for (var i in temp_db) store.add(temp_db[i]);
-};
-
-function read(id) {
-  var transaction = db.transaction('todos');
-  var store = transaction.objectStore('todos');
-  var request = store.get(id);
-
-  request.onerror = function(e) {
-    console.error("error: " + e);
-  };
-
-  request.onsuccess = function() {
-    if (request.result)
-      console.log("title: " + request.title);
-    else
-      console.log("no date");
-  };
-}
-
-
 !function(window) {
+  var $ = window.D, $1 = window.D1, _ = window._, lo = {}, db, todo = {};
 
-  var $ = window.D, $1 = window.D1, _ = window._, lo = {};
+  var db_size = 5 * 1024 * 1024;
+  db = openDatabase('todoDB', '1', 'todo database', db_size);
+  db.transaction(function(tx) { tx.executeSql('CREATE TABLE IF NOT EXISTS todos(id INTEGER, title TEXT, completed INTEGER)', []); });
 
   var template = _.t('data', '\
     section.todoapp\
@@ -76,37 +28,61 @@ function read(id) {
         button.clear-completed Clear completed\
   ');
 
-  lo.save = function(title, id) {
-    var li;
-    if (id) {
-      li = _.find(temp_db, function(d) { return d.id == id; });
-      li.title = title;
-    }
-    else {
-      li = { id: id = Date.now(), title: title, completed: false };
-      temp_db.push(li);
-    }
-    return li;
-  };
-
-  lo.toggle = function(id) {
-    var li = _.find(temp_db, function(d) { return d.id == id; });
-    li.completed = !li.completed;
-    return li;
-  };
-
   lo.route = function(state) {
-    var show_db = temp_db, predi = function(d) { return d.completed; };
-
-    if (state === 'active')
-      show_db = _.reject(show_db, predi);
-    else if (state === 'completed')
-      show_db = _.filter(show_db, predi);
-
-    $1('.todo-list').innerHTML = lo.list(show_db);
+    _.go(state,
+      _.if(
+        _.is_equal('active'),
+        _.c('where completed=0')
+      ).else_if(
+        _.is_equal('completed'),
+        _.c('where completed=1')
+      ).else(
+        _.c('')
+      ),
+      todo.select,
+      lo.list,
+      $.html_to($1('.todo-list')));
   };
 
-  _.go(temp_db,
+  todo.select = _.cb(function(where, next) {
+    db.transaction(function(tx) {
+      tx.executeSql('select * from todos ' + where, [], function(t, res) {
+        next(_.to_array(res.rows));
+      });
+    });
+  });
+
+  todo.add = _.cb(function(text, next) {
+    db.transaction(function(tx) {
+      var id = Date.now();
+      tx.executeSql('INSERT INTO todos (id, title, completed) VALUES (?,?,?)', [id, text, 0], function() {
+          next({ id: id, title: text, completed: 0 });
+        });
+    });
+  });
+
+  todo.update = _.cb(function(id, text, next) {
+    db.transaction(function(tx) {
+      tx.executeSql('UPDATE todos SET title=? WHERE id=?', [text, id]);
+    })
+  });
+
+  todo.delete = _.cb(function(where, vals, next) {
+    db.transaction(function(tx) {
+      tx.executeSql('delete from todos ' + where, vals, next, _.loge);
+    })
+  });
+
+  todo.toggle = _.cb(function(id, next) {
+    db.transaction(function(tx) {
+      tx.executeSql('select completed from todos where id=?', [id], function(t, res) {
+        t.executeSql('UPDATE todos SET completed=? WHERE id=?', [res.rows[0].completed ? 0 : 1, id]);
+      })
+    })
+  });
+
+  _.go("",
+    todo.select,
     template, $.el,
     $.append_to('body'),
 
@@ -115,7 +91,7 @@ function read(id) {
       if (value && e.keyCode == 13) {
         $.val(e.$currentTarget, '');
         _.go(value,
-          lo.save,
+          todo.add,
           lo.list,
           $.append_to('.todo-list'));
       }
@@ -126,12 +102,31 @@ function read(id) {
       $.closest('li'),
       $.toggle_class('completed'),
       $.attr('data-id'),
-      lo.toggle)),
+      todo.toggle)),
 
     $.on('change', '.filters input', __(
       _.val('$currentTarget'),
       $.val,
-      lo.route))
+      lo.route)),
+
+    $.on('click', '.clear-completed', function() {
+      _.go(
+        _.mr('where completed=?', [1]),
+        todo.delete,
+        _.c('li'), $,
+        $.remove('.completed'))
+    }),
+
+    $.on('click', '.delete', function(e) {
+      console.log(e)
+      _.go(e.$currentTarget,
+        $.closest('li'),
+        $.remove,
+        $.attr('data-id'),
+        function(id) { return _.mr('where id=?', [id]) },
+        todo.delete)
+    })
+
   );
 }(window);
 

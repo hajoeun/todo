@@ -1612,7 +1612,7 @@
   };
 
   // mutable/immutable with sel
-  _.sel = _.select = function(start, sel) {
+  _.sel = _.select_todo = function(start, sel) {
     return sel && _.reduce(sel.split(/\s*->\s*/), function(mem, key) {
         if (!mem || !key) return;
         return !key.match(/^\((.+)\)/) ? (!key.match(/\[(.*)\]/) ? mem[key] : function(mem, numbers) {
@@ -1723,8 +1723,8 @@
     var _box = function() { return _box_data; };
     return _.extend(_box, {
       stringify: function() { return JSON.stringify(_box_data); },
-      select: select,
-      sel: select,
+      select_todo: select_todo,
+      sel: select_todo,
       set: function(el, val) {
         return help_result(_.set(_box_data, make_sel(el), val), _box);
       },
@@ -1798,7 +1798,7 @@
     });
     function select(el) {
       if (!el || likearr(el) && !el.length) return ;
-      return _.select(_box_data, make_sel(el));
+      return _.select_todo(_box_data, make_sel(el));
     }
     function make_sel(el) {
       return _.isString(el) ? el : _.isArray(el) ? map(el, function(val) {

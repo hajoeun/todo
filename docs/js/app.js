@@ -28,11 +28,11 @@
         button.clear-completed Clear completed\
   ');
 
-  lo.route = __(
-    function(state) {
-    },
-    lo.list,
-    $.html_to($1('.todo-list')));
+  // lo.route = __(
+  //   function(state) {
+  //   },
+  //   lo.list,
+  //   $.html_to($1('.todo-list')));
 
   lo.save_db = function() {
 

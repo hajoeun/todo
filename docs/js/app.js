@@ -15,10 +15,13 @@
         ul.todo-list\
       footer.footer\
         span.todo-count\
-        .filters\
-          input[type="radio" name="filter" value="all" {{localStorage.route == "all" ? "checked" : ""}}] All\
-          input[type="radio" name="filter" value="active" {{localStorage.route == "active" ? "checked" : ""}}] Active\
-          input[type="radio" name="filter" value="completed" {{localStorage.route == "completed" ? "checked" : ""}}] Completed\
+        ul.filters\
+          li\
+            a#all.{{localStorage.route == "all" ? "selected" : ""}} All\
+          li\
+            a#active.{{localStorage.route == "active" ? "selected" : ""}}] Active\
+          li\
+            a#completed.{{localStorage.route == "completed" ? "selected" : ""}}] Completed\
         button.clear-completed Clear completed'),
 
     t_list = _.teach('d', '\
@@ -29,7 +32,7 @@
 
   lo.count = function() {
     var len = _.reject(lo.db, function(d) { return d.completed }).length;
-    $.text($('.todo-count'),  _.s('l', '{{l}} items left')(len));
+    $.text($('.todo-count'),  _.s('l', '{{l}} ' +  (len < 2 ? 'item' : 'items') + ' left')(len));
   };
 
   lo.route = _.tap(function(state) {
@@ -134,9 +137,13 @@
       db.toggle,
       lo.toggle_todo)),
 
-    $.on('change', '.filters input', __(
+    $.on('click', 'ul.filters li a', __(
       _.val('$currentTarget'),
-      $.val,
+      _.tap(function() {
+        $.remove_class($('a.selected'), 'selected');
+      }),
+      $.add_class('selected'),
+      $.attr('id'),
       lo.route)),
 
     $.on('click', '.clear-completed', function() {
@@ -144,7 +151,7 @@
         _.mr('where completed=1', []),
         db.delete,
         lo.del_todos,
-        _.c('li'), $,
+        _.c('ul.todo-list li'), $,
         $.remove('.completed'))
     }),
 

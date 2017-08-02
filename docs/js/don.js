@@ -405,7 +405,7 @@
     function _parse_float_only_numeric(n) { return _is_numeric(n) ? parseFloat(n) : n; }
 
     var class_editor = function f(els, class_name, method) {
-      if (!(_is_node(els) || _is_node(els[0]))) return _(f, _, els, method);
+      if (!_is_el_or_els(els) && els.length != 0) return _(f, _, els, method);
       if (els == null) return;
       function editor(el, i) {
         var val = _is_fn(class_name) ? class_name(i, el) : class_name;

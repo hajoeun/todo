@@ -15,10 +15,13 @@
         ul.todo-list\
       footer.footer\
         span.todo-count\
-        .filters\
-          input[type="radio" name="filter" value="all" {{localStorage.route == "all" ? "checked" : ""}}] All\
-          input[type="radio" name="filter" value="active" {{localStorage.route == "active" ? "checked" : ""}}] Active\
-          input[type="radio" name="filter" value="completed" {{localStorage.route == "completed" ? "checked" : ""}}] Completed\
+        ul.filters\
+          li\
+            a#all.{{localStorage.route == "all" ? "selected" : ""}} All\
+          li\
+            a#active.{{localStorage.route == "active" ? "selected" : ""}}] Active\
+          li\
+            a#completed.{{localStorage.route == "completed" ? "selected" : ""}}] Completed\
         button.clear-completed Clear completed'),
 
     t_list = _.teach('d', '\
@@ -29,7 +32,7 @@
 
   lo.count = function() {
     var len = _.reject(lo.db, function(d) { return d.completed }).length;
-    $.text($('.todo-count'),  _.s('l', '{{l}} items left')(len));
+    $.text($('.todo-count'),  _.s('l', '{{l}} ' +  (len < 2 ? 'item' : 'items') + ' left')(len));
   };
 
   lo.route = _.tap(function(state) {
@@ -46,12 +49,12 @@
      $.html_to($1('.todo-list')));
   }, lo.count);
 
-  lo.save_db = _.tap(function(data) { lo.db = data; });
+  lo.sava_todos = _.tap(function(data) { lo.db = data; });
 
   lo.add_todo = _.tap(function(data) { lo.db.push(data); }, lo.count);
 
   lo.del_todo = _.tap(function(id) {
-    lo.db = _.reject(lo.db, function(d) { return d.id == id });
+    lo.db = _.reject(lo.db, function(d) { return d.id == id; });
   }, lo.count);
 
   lo.del_todos = _.tap(function() {
@@ -62,6 +65,14 @@
     _.find(lo.db, function(d) {
       return d.id == id && !void (d.completed = d.completed ? 0 : 1);
     });
+  }, lo.count);
+
+  lo.complete_todos = _.tap(function() {
+    _.go(lo.db,
+      _.filter(function(d) {
+        return !d.completed && (d.completed = 1);
+      }),
+      lo.route);
   }, lo.count);
 
   db.select = _.cb(function(where, next) {
@@ -105,9 +116,16 @@
     })
   });
 
+  db.complete_all = _.cb(function(id, next) {
+    web_sql.transaction(function(tx) {
+      tx.executeSql('UPDATE todos SET completed=1 WHERE completed=0', [], next)
+    })
+  });
+
+
   _.go("",
     db.select,
-    lo.save_db,
+    lo.sava_todos,
     template, $.el,
     $.append_to('body'),
     lo.route,
@@ -126,17 +144,36 @@
       }
     }),
 
-    $.on('click', '.toggle', __(
-      _.val('$currentTarget'),
-      $.closest('li'),
-      $.toggle_class('completed'),
-      $.attr('data-id'),
-      db.toggle,
-      lo.toggle_todo)),
+    $.on('click', '.toggle', function(e) {
+      var just_li = _.c($.closest(e.$currentTarget, 'li'));
+      _.go(localStorage.route,
+        _.if(_.is_equal('all'),
+          __(just_li, $.toggle_class('completed'))).
+        else(
+          __(just_li, $.remove)),
+        $.attr('data-id'),
+        db.toggle,
+        lo.toggle_todo)
+    }),
 
-    $.on('change', '.filters input', __(
+    $.on('click', '.toggle-all', function() {
+      var just_li = _.c($('li:not(.completed)'));
+      _.go(localStorage.route,
+        _.if(_.is_equal('all'),
+          __(just_li, $.add_class('completed'))).
+        else(
+          __(just_li, $.remove)),
+        db.complete_all,
+        lo.complete_todos)
+    }),
+
+    $.on('click', 'ul.filters li a', __(
       _.val('$currentTarget'),
-      $.val,
+      _.tap(function() {
+        $.remove_class($('a.selected'), 'selected');
+      }),
+      $.add_class('selected'),
+      $.attr('id'),
       lo.route)),
 
     $.on('click', '.clear-completed', function() {
@@ -144,7 +181,7 @@
         _.mr('where completed=1', []),
         db.delete,
         lo.del_todos,
-        _.c('li'), $,
+        _.c('ul.todo-list li'), $,
         $.remove('.completed'))
     }),
 

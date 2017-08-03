@@ -1,8 +1,7 @@
-
 (function(){
-
-
   var slice = Array.prototype.slice;
+
+  var ___ = {};
   function _(func) {
     var parts1 = [], parts2 = [],
         parts = slice.call(arguments, 1),
@@ -26,19 +25,19 @@
 
   window.J = _;
 
-  _.go = function (v, fs) {
+  _.go = function(v, fs) {
     var fss = Array.isArray(fs) ? fs : slice.call(arguments, 1);
     return go_async(v, fss)
   };
 
-  function go_async (res, fs) {
+  function go_async(res, fs) {
 
     if (res && res.then) {
       return res.then(function(re) {
         return go_async(re, fs);
       })
     } else {
-      return fs.length? go_async(res && res._mr ? fs[0].apply(null, res) :fs[0](res), fs.slice(1)) : res;
+      return fs.length ? go_async(res && res._mr ? fs[0].apply(null, res) : fs[0](res), fs.slice(1)) : res;
     }
   }
 
@@ -72,7 +71,7 @@
   _.val = function f(obj, key) {
     if (arguments.length == 1) return _(f, _, obj);
     return obj && obj[key];
-  }
+  };
 
   _.cb = function(f) {
     return function() {
@@ -81,7 +80,7 @@
         return f.apply(null, args.concat(next));
       })
     }
-  }
+  };
 
   _.idtt = function(v) { return v };
 
@@ -97,10 +96,8 @@
     return function(re) {
       var ree = arguments.length == 1 ? re : _.mr(arguments);
         return _.go(ree, fs.concat(_.c(re)));
-      // return re;
     };
-  }
-
+  };
 
   _.filter = function f(arr, iter) {
     if (arguments.length ==1) return _(f, _, arr);
@@ -131,7 +128,7 @@
     if (arguments.length ==1) _(f, _, arr);
     var keys = arr.constructor == Object ? Object.keys(arr) : null;
 
-    for (var i=0, len = keys ? keys.length : arr.length ; i < len ; i++ ) {
+    for (var i=0, len=keys ? keys.length : arr.length ; i < len ; i++ ) {
       var val = arr[ keys ? keys[i] : i];
 
       if (iter(val, i, arr)) {

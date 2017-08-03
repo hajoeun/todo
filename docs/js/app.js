@@ -17,12 +17,21 @@
         span.todo-count\
         ul.filters\
           li\
-            a#all.{{localStorage.route == "all" ? "selected" : ""}} All\
+            a#all.{{(!localStorage.route || localStorage.route == "all") ? "selected" : ""}} All\
           li\
             a#active.{{localStorage.route == "active" ? "selected" : ""}}] Active\
           li\
             a#completed.{{localStorage.route == "completed" ? "selected" : ""}}] Completed\
-        button.clear-completed Clear completed'),
+        button.clear-completed Clear completed\
+    footer.info\
+      p Created by \
+        a[href=https://www.github.com/joeunha] Joeun Ha\
+        | & \
+        a[href=https://www.github.com/dev-jip] JIP\
+      p Powered by \
+        a[href=https://marpple.github.io/partial.js] Partial.js\
+        | & \
+        a[] Don.js'),
 
     t_list = _.teach('d', '\
       li.{{d.completed ? "completed" : ""}}[data-id={{d.id}}] \

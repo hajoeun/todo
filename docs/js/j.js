@@ -38,7 +38,7 @@
         return go_async(re, fs);
       })
     } else {
-      return fs.length? go_async(fs[0](res), fs.slice(1)) : res;
+      return fs.length? go_async(res && res._mr ? fs[0].apply(null, res) :fs[0](res), fs.slice(1)) : res;
     }
   }
 
@@ -96,10 +96,8 @@
     var fs  = slice.call(arguments, 0);
     return function(re) {
       var ree = arguments.length == 1 ? re : _.mr(arguments);
-      setTimeout(function(){
-        _.go(ree, fs);
-      }, 0);
-      return re;
+        return _.go(ree, fs.concat(_.c(re)));
+      // return re;
     };
   }
 
@@ -140,11 +138,10 @@
         return val
       }
     }
-  }
+  };
 
   _.is_equal = function f(left, right) {
-    if (arguments.length ==1) return _(f, _, left);
-
+    if (arguments.length == 1) return _(f, _, left);
     return left == right;
   }
 

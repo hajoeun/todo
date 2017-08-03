@@ -53,7 +53,6 @@
          return J.filter(lo.db, function(d) { return !d.completed });
        if (state === 'completed')
          return J.filter(lo.db, function(d) { return d.completed });
-
        return lo.db;
      },
      t_list,
@@ -61,7 +60,6 @@
   }, lo.count);
 
   lo.sava_todos = J.tap(function(data) { lo.db = data; });
-
 
   lo.add_todo = J.tap(function(data) { lo.db.push(data); }, lo.count);
 
@@ -79,8 +77,7 @@
     });
   }, lo.count);
 
-  lo.complete_todos = _.tap(function() {
-    
+  lo.complete_todos = J.tap(function() {
     J.go(lo.db,
       J.filter(function(d) {
         return !d.completed && (d.completed = 1);
@@ -91,9 +88,7 @@
   db.select = J.cb(function(where, next) {
     web_sql.transaction(function(tx) {
       tx.executeSql('select * from todos ' + where, [], function(t, res) {
-
         next(J.to_array(res.rows));
-
       });
     });
   });
@@ -114,7 +109,6 @@
   });
 
   db.delete = J.cb(function(where, vals, next) {
-
     web_sql.transaction(function(tx) {
       tx.executeSql('delete from todos ' + where, vals, function() {
         next(vals[0]);
@@ -165,7 +159,7 @@
       J.go(localStorage.route,
         _.if(J.is_equal('all'),
           J.pipe(just_li, $.toggle_class('completed')))
-          .else(
+        .else(
           J.pipe(just_li, $.remove)),
         $.attr('data-id'),
         db.toggle,
@@ -173,7 +167,7 @@
     }),
 
     $.on('click', '.toggle-all', function() {
-      var just_li = J.c($('li:not(.completed)'));
+      var just_li = J.c($('.todo-list li:not(.completed)'));
       _.go(localStorage.route,
         _.if(_.is_equal('all'),
           J.pipe(just_li, $.add_class('completed'))).

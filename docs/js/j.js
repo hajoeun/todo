@@ -26,50 +26,49 @@
 
   window.J = _;
 
-  _.go = function(v, fs) {
-    return _.reduce(slice.call(arguments, 1), function(mem, f){
-      return mem._mr ? f.apply(null, slice.call(mem, 0)) :f(mem);
-    }, v);
+  _.go = function (v, fs) {
+    var fss = Array.isArray(fs) ? fs : slice.call(arguments, 1);
+    return go_async(v, fss)
   };
 
+  function go_async (res, fs) {
+
+    if (res && res.then) {
+      return res.then(function(re) {
+        return go_async(re, fs);
+      })
+    } else {
+      return fs.length? go_async(fs[0](res), fs.slice(1)) : res;
+    }
+  }
+
+  _.pipe = function() {
+    var args = slice.call(arguments, 0);
+    return function() {
+      return go_async(arguments[0], args);
+    }
+  };
 
   _.reduce = function f(arr, iter, memo) {
-    if (typeof arr === "function") return _(f, _, arr, memo);
-
+    if (typeof arr === "function" && arguments.length == 2) return _(f, _, arr, iter);
+    if (typeof arr === "function" && arguments.length == 1) return _(f, _, arr);
     var i = 0;
-
-    if (arr.constructor.name == "Object") {
-      var keys = Object.keys(arr);
-      var res = arguments.length === 2 ? arr[len[i++]] : memo;
-
-      for (var len = keys.length; i < len; i++ ) {
-        res = iter(res, arr[keys[i]], keys[i], arr);
-      }
-    } else {
-
-      var res = arguments.length === 2 ? arr[i++] : memo;
-
-      for (var len = arr.length; i < len; i++ ) {
-        if (res && res.then && typeof res.then === "function") {
-          return res.then(function(v){
-            res = arr[i](v);
-            if (arr.slice(i+1).length === 0) return res;
-            return f(arr.slice(i+1), iter, res);
-          });
-        } else {
-          res = iter(res, arr[i], i, arr);
-        }
-      }
-    }
-    return res
+    var keys = arr.constructor == Object ? Object.keys(arr) : null;
+    var res = memo ? memo : keys ? arr[keys[i++]] : arr[i++] ;
+    return _reduce(keys || arr, iter, res, i, keys);
   };
 
+  function _reduce(map, iter, res, i, keys) {
+    for (var len = map.length, key ; i < len; i++ ) {
+      key = keys ? keys[i] : i;
+      res = iter(res, map[key], key, map);
+    }
+    return res
+  }
+
   _.mr = function() { return arguments._mr = true, arguments; }
-
   _.wrap_arr = function(v) { return Array.isArray(v) ? v : [v]; };
-
   _.constant = _.c = function (v) { return function() { return v }};
-
   _.val = function f(obj, key) {
     if (arguments.length == 1) return _(f, _, obj);
     return obj && obj[key];
@@ -77,10 +76,9 @@
 
   _.cb = function(f) {
     return function() {
-        var args = slice.call(arguments, 0);
+      var args = arguments[0]._mr ? slice.call(arguments[0], 0) : slice.call(arguments, 0);
       return new Promise(function(next) {
-        args.push(next);
-        return f.apply(null, args);
+        return f.apply(null, args.concat(next));
       })
     }
   }
@@ -90,10 +88,65 @@
   _.to_array = function(obj) {
     return _.reduce(obj, function(m,v){
       return m.concat(v)
-    }, [])
-  };
+    }, [])};
 
   _.loge = window.console && window.console.error ? console.error.bind ? console.error.bind(console) : function() { console.error.apply(console, arguments); } : _.idtt;
+
+  _.tap = function() {
+    var fs  = slice.call(arguments, 0);
+    return function(re) {
+      var ree = arguments.length == 1 ? re : _.mr(arguments);
+      setTimeout(function(){
+        _.go(ree, fs);
+      }, 0);
+      return re;
+    };
+  }
+
+
+  _.filter = function f(arr, iter) {
+    if (arguments.length ==1) return _(f, _, arr);
+
+    var res = _.reduce(arr, function(m , v, i, li) {
+      if (iter(v, i, li)) {
+        return m.concat(v);
+      }
+      return m
+    }, []);
+    return res || [];
+  };
+
+
+  _.reject = function f(arr, iter) {
+    if (arguments.length ==1) _(f, _, arr);
+
+    var res = _.reduce(arr, function(m , v, i, li) {
+      if (!iter(v, i, li)) {
+        return m.concat(v);
+      }
+      return m;
+    }, []);
+    return res || [];
+  };
+
+  _.find = function f(arr, iter) {
+    if (arguments.length ==1) _(f, _, arr);
+    var keys = arr.constructor == Object ? Object.keys(arr) : null;
+
+    for (var i=0, len = keys ? keys.length : arr.length ; i < len ; i++ ) {
+      var val = arr[ keys ? keys[i] : i];
+
+      if (iter(val, i, arr)) {
+        return val
+      }
+    }
+  }
+
+  _.is_equal = function f(left, right) {
+    if (arguments.length ==1) return _(f, _, left);
+
+    return left == right;
+  }
 
 
 })();

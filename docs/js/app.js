@@ -116,8 +116,6 @@
   db.delete = J.cb(function(where, vals, next) {
 
     web_sql.transaction(function(tx) {
-      console.log(vals, '===')
-
       tx.executeSql('delete from todos ' + where, vals, function() {
         next(vals[0]);
       }, J.loge);
@@ -166,8 +164,8 @@
       var just_li = J.c($.closest(e.$currentTarget, 'li'));
       J.go(localStorage.route,
         _.if(J.is_equal('all'),
-          J.pipe(just_li, $.toggle_class('completed'))).
-        else(
+          J.pipe(just_li, $.toggle_class('completed')))
+          .else(
           J.pipe(just_li, $.remove)),
         $.attr('data-id'),
         db.toggle,

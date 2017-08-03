@@ -62,7 +62,7 @@
       key = keys ? keys[i] : i;
       res = iter(res, map[key], key, map);
     }
-    return res
+    return res;
   }
 
   _.mr = function() { return arguments._mr = true, arguments; }
@@ -84,11 +84,6 @@
 
   _.idtt = function(v) { return v };
 
-  _.to_array = function(obj) {
-    return _.reduce(obj, function(m,v){
-      return m.concat(v)
-    }, [])};
-
   _.loge = window.console && window.console.error ? console.error.bind ? console.error.bind(console) : function() { console.error.apply(console, arguments); } : _.idtt;
 
   _.tap = function() {
@@ -99,26 +94,37 @@
     };
   };
 
+  _.each = function f(data, iter) {
+    if (arguments.length == 1) return _(f, _, data);
+    var i = -1, key, keys = data.constructor == Object ? Object.keys(data) : null, len = (keys || data).length;
+    while (++i < len && !void (key = keys ? keys[i] : i)) iter(data[key], key, data);
+    return data;
+  };
+
+  _.map = function f(data, iter) {
+    if (arguments.length == 1) return _(f, _, data);
+    var i = -1, res = [], key, keys = data.constructor == Object ? Object.keys(data) : null, len = (keys || data).length;
+    while (++i < len && !void (key = keys ? keys[i] : i)) res[i] = iter(data[key], key, data);
+    return res;
+  };
+
+  _.to_array = _.map(_.idtt);
+
   _.filter = function f(arr, iter) {
     if (arguments.length ==1) return _(f, _, arr);
 
-    var res = _.reduce(arr, function(m , v, i, li) {
-      if (iter(v, i, li)) {
-        return m.concat(v);
-      }
+    var res = _.reduce(arr, function(m, v, i, li) {
+      if (iter(v, i, li)) return m.concat(v);
       return m
     }, []);
     return res || [];
   };
 
-
   _.reject = function f(arr, iter) {
     if (arguments.length ==1) _(f, _, arr);
 
-    var res = _.reduce(arr, function(m , v, i, li) {
-      if (!iter(v, i, li)) {
-        return m.concat(v);
-      }
+    var res = _.reduce(arr, function(m, v, i, li) {
+      if (!iter(v, i, li)) return m.concat(v);
       return m;
     }, []);
     return res || [];
@@ -129,11 +135,8 @@
     var keys = arr.constructor == Object ? Object.keys(arr) : null;
 
     for (var i=0, len=keys ? keys.length : arr.length ; i < len ; i++ ) {
-      var val = arr[ keys ? keys[i] : i];
-
-      if (iter(val, i, arr)) {
-        return val
-      }
+      var val = arr[keys ? keys[i] : i];
+      if (iter(val, i, arr)) return val;
     }
   };
 
@@ -141,6 +144,5 @@
     if (arguments.length == 1) return _(f, _, left);
     return left == right;
   }
-
 
 })();

@@ -305,7 +305,9 @@
     function If() {
       var context = this, args = arguments;
       return _.go.call(this, store,
-        _(_.find, _, function(fnset) { return fnset[0].apply(context, args); }),
+        _(_.find, _, function(fnset) {
+          console.log(fnset, '====')
+          return fnset[0].apply(context, args); }),
         function(fnset) { return fnset ? fnset[1].apply(context, args) : void 0; });
     }
   };

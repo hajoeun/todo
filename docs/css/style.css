@@ -211,7 +211,7 @@ label[for='toggle-all'] {
   text-decoration: line-through;
 }
 
-.todo-list li .destroy {
+.todo-list li .delete {
   display: none;
   position: absolute;
   top: 0;
@@ -226,15 +226,15 @@ label[for='toggle-all'] {
   transition: color 0.2s ease-out;
 }
 
-.todo-list li .destroy:hover {
+.todo-list li .delete:hover {
   color: #af5b5e;
 }
 
-.todo-list li .destroy:after {
+.todo-list li .delete:after {
   content: '×';
 }
 
-.todo-list li:hover .destroy {
+.todo-list li:hover .delete {
   display: block;
 }
 
@@ -347,7 +347,7 @@ html .clear-completed:active {
 
 /*
 	Hack to remove background from Mobile Safari.
-	Can't use it globally since it destroys checkboxes in Firefox
+	Can't use it globally since it deletes checkboxes in Firefox
 */
 @media screen and (-webkit-min-device-pixel-ratio:0) {
   .toggle-all,

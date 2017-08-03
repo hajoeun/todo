@@ -37,62 +37,68 @@
       li.{{d.completed ? "completed" : ""}}[data-id={{d.id}}] \
         input.toggle[type=checkbox {{d.completed ? "checked" : ""}}]\
         label {{d.title}}\
-        button.destroy');
+        button.delete');
 
   lo.count = function() {
-    var len = _.reject(lo.db, function(d) { return d.completed }).length;
+    var len = J.reject(lo.db, function(d) { return d.completed }).length;
+
     $.text($('.todo-count'),  _.s('l', '{{l}} ' +  (len < 2 ? 'item' : 'items') + ' left')(len));
   };
 
-  lo.route = _.tap(function(state) {
+  lo.route = J.tap(function(state) {
     if (typeof state == 'string') localStorage.route = state;
-    _.go(localStorage.route,
+    J.go(localStorage.route,
      function(state) {
        if (state === 'active')
-         return _.filter(lo.db, function(d) { return !d.completed });
+         return J.filter(lo.db, function(d) { return !d.completed });
        if (state === 'completed')
-         return _.filter(lo.db, function(d) { return d.completed });
+         return J.filter(lo.db, function(d) { return d.completed });
+
        return lo.db;
      },
      t_list,
      $.html_to($1('.todo-list')));
   }, lo.count);
 
-  lo.sava_todos = _.tap(function(data) { lo.db = data; });
+  lo.sava_todos = J.tap(function(data) { lo.db = data; });
 
-  lo.add_todo = _.tap(function(data) { lo.db.push(data); }, lo.count);
 
-  lo.del_todo = _.tap(function(id) {
-    lo.db = _.reject(lo.db, function(d) { return d.id == id; });
+  lo.add_todo = J.tap(function(data) { lo.db.push(data); }, lo.count);
+
+  lo.del_todo = J.tap(function(id) {
+    lo.db = J.reject(lo.db, function(d) { return d.id == id; });
   }, lo.count);
 
-  lo.del_todos = _.tap(function() {
-    lo.db = _.reject(lo.db, function(d) { return d.completed });
+  lo.del_todos = J.tap(function() {
+    lo.db = J.reject(lo.db, function(d) { return d.completed });
   }, lo.count);
 
-  lo.toggle_todo = _.tap(function(id) {
-    _.find(lo.db, function(d) {
+  lo.toggle_todo = J.tap(function(id) {
+    J.find(lo.db, function(d) {
       return d.id == id && !void (d.completed = d.completed ? 0 : 1);
     });
   }, lo.count);
 
   lo.complete_todos = _.tap(function() {
-    _.go(lo.db,
-      _.filter(function(d) {
+    
+    J.go(lo.db,
+      J.filter(function(d) {
         return !d.completed && (d.completed = 1);
       }),
       lo.route);
   }, lo.count);
 
-  db.select = _.cb(function(where, next) {
+  db.select = J.cb(function(where, next) {
     web_sql.transaction(function(tx) {
       tx.executeSql('select * from todos ' + where, [], function(t, res) {
-        next(_.to_array(res.rows));
+
+        next(J.to_array(res.rows));
+
       });
     });
   });
 
-  db.add = _.cb(function(text, next) {
+  db.add = J.cb(function(text, next) {
     web_sql.transaction(function(tx) {
       var id = Date.now();
       tx.executeSql('INSERT INTO todos (id, title, completed) VALUES (?,?,?)', [id, text, 0], function() {
@@ -101,21 +107,24 @@
     });
   });
 
-  db.update = _.cb(function(id, text, next) {
+  db.update = J.cb(function(id, text, next) {
     web_sql.transaction(function(tx) {
       tx.executeSql('UPDATE todos SET title=? WHERE id=?', [text, id]);
     })
   });
 
-  db.delete = _.cb(function(where, vals, next) {
+  db.delete = J.cb(function(where, vals, next) {
+
     web_sql.transaction(function(tx) {
+      console.log(vals, '===')
+
       tx.executeSql('delete from todos ' + where, vals, function() {
         next(vals[0]);
-      }, _.loge);
+      }, J.loge);
     })
   });
 
-  db.toggle = _.cb(function(id, next) {
+  db.toggle = J.cb(function(id, next) {
     web_sql.transaction(function(tx) {
       tx.executeSql('select completed from todos where id=?', [id], function(t, res) {
         t.executeSql('UPDATE todos SET completed=? WHERE id=?', [res.rows[0].completed ? 0 : 1, id], function() {
@@ -125,14 +134,14 @@
     })
   });
 
-  db.complete_all = _.cb(function(id, next) {
+  db.complete_all = J.cb(function(id, next) {
     web_sql.transaction(function(tx) {
       tx.executeSql('UPDATE todos SET completed=1 WHERE completed=0', [], next)
     })
   });
 
 
-  _.go("",
+  J.go("",
     db.select,
     lo.sava_todos,
     template, $.el,
@@ -143,42 +152,42 @@
       var value = $.val(e.$currentTarget);
       if (value && e.keyCode == 13) {
         $.val(e.$currentTarget, '');
-        _.go(value,
+        J.go(value,
           db.add,
           lo.add_todo,
           function(data) {
             if (localStorage.route !== 'completed')
-              _.go(data, t_list, $.append_to('.todo-list'));
+              J.go(data, t_list, $.append_to('.todo-list'));
           });
       }
     }),
 
     $.on('click', '.toggle', function(e) {
-      var just_li = _.c($.closest(e.$currentTarget, 'li'));
-      _.go(localStorage.route,
-        _.if(_.is_equal('all'),
-          __(just_li, $.toggle_class('completed'))).
+      var just_li = J.c($.closest(e.$currentTarget, 'li'));
+      J.go(localStorage.route,
+        _.if(J.is_equal('all'),
+          J.pipe(just_li, $.toggle_class('completed'))).
         else(
-          __(just_li, $.remove)),
+          J.pipe(just_li, $.remove)),
         $.attr('data-id'),
         db.toggle,
         lo.toggle_todo)
     }),
 
     $.on('click', '.toggle-all', function() {
-      var just_li = _.c($('li:not(.completed)'));
+      var just_li = J.c($('li:not(.completed)'));
       _.go(localStorage.route,
         _.if(_.is_equal('all'),
-          __(just_li, $.add_class('completed'))).
+          J.pipe(just_li, $.add_class('completed'))).
         else(
-          __(just_li, $.remove)),
+          J.pipe(just_li, $.remove)),
         db.complete_all,
         lo.complete_todos)
     }),
 
     $.on('click', 'ul.filters li a', __(
-      _.val('$currentTarget'),
-      _.tap(function() {
+      J.val('$currentTarget'),
+      J.tap(function() {
         $.remove_class($('a.selected'), 'selected');
       }),
       $.add_class('selected'),
@@ -186,21 +195,21 @@
       lo.route)),
 
     $.on('click', '.clear-completed', function() {
-      _.go(
-        _.mr('where completed=1', []),
+      J.go(
+        J.mr('where completed=1', []),
         db.delete,
         lo.del_todos,
-        _.c('ul.todo-list li'), $,
+        J.c('ul.todo-list li'), $,
         $.remove('.completed'))
     }),
 
-    $.on('click', '.destroy', function(e) {
-      _.go(e.$currentTarget,
+    $.on('click', '.delete', function(e) {
+      J.go(e.$currentTarget,
         $.closest('li'),
         $.remove,
         $.attr('data-id'),
-        _.wrap_arr,
-        _(_.mr, 'where id=?'),
+        J.wrap_arr,
+        J(J.mr, 'where id=?'),
         db.delete,
         lo.del_todo)
     })

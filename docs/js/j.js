@@ -23,7 +23,7 @@
     }
   }
 
-  window.J = _;
+  window._ = _;
 
   _.go = function(v, fs) {
     var fss = Array.isArray(fs) ? fs : slice.call(arguments, 1);

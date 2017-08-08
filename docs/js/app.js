@@ -60,6 +60,7 @@
        $.html_to($1('.todo-list')));
       }, counter);
 
+
   _.go("",
     function() {
     return new Promise(function(next) {
@@ -158,5 +159,3 @@
   );
 
 }(window);
-
-

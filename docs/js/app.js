@@ -33,11 +33,11 @@
         | & \
         a[] Don.js'),
 
-    t_list = _.teach('d', '\
+    t_list = _(_.sum, _, _.t('d', '\
       li.{{d.completed ? "completed" : ""}}[data-id={{d.id}}] \
         input.toggle[type=checkbox {{d.completed ? "checked" : ""}}]\
         label {{d.title}}\
-        button.delete'),
+        button.delete')),
 
     counter = function() {
       var len = _.reject(local_db, function(d) { return d.completed }).length;
@@ -89,7 +89,7 @@
           }),
           _.tap(function(data) { local_db.push(data); }, counter),
           _.if(_.l("localStorage.route !== 'completed'"),
-            __(t_list, $.append_to('.todo-list'))))
+            __(_.wrap_arr, t_list, $.append_to('.todo-list'))))
       }
     }),
 

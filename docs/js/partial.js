@@ -324,7 +324,7 @@
   _.args2 = function() { return arguments[2]; };
   _.args3 = function() { return arguments[3]; };
   _.args4 = function() { return arguments[4]; };
-  _.a = _.c = _.always = _.constant = function(v) { return function() { return v; }; };
+  _.a = _.c = _.always = _.constant = function(v) { return (arguments.length == 0) ? function() { return __; } : function() { return v; }; };
   _.true = _.constant(true);
   _.false = _.constant(false);
   _.null = _.constant(null);
@@ -656,6 +656,7 @@
   _.l = _.lambda = lambda; function lambda(str) {
     if (typeof str !== 'string') return str;
     str = str.replace(/\*\*/g, '"');
+    str = str.replace(/\*/g, '"');
     if (!has_lambda) str = str.replace(/`/g, "'");
     if (lambda[str]) return lambda[str];
 
@@ -787,6 +788,14 @@
     if (arguments.length == 1) return _(f, _, v);
     return _.is_array(v) ? _.map(v, iter) : iter(v);
   };
+
+  _.sum = _.pipe(
+    _.map,
+    function(list) {
+      var i = 0, result = list[0];
+      while (++i < list.length) result += list[i];
+      return result;
+    });
 
   var _reduce_async = function f(data, iter, keys, mp, i) {
     return _.go(mp, function(memo) {
@@ -1612,7 +1621,7 @@
   };
 
   // mutable/immutable with sel
-  _.sel = _.select_todo = function(start, sel) {
+  _.sel = _.select = function(start, sel) {
     return sel && _.reduce(sel.split(/\s*->\s*/), function(mem, key) {
         if (!mem || !key) return;
         return !key.match(/^\((.+)\)/) ? (!key.match(/\[(.*)\]/) ? mem[key] : function(mem, numbers) {
@@ -1723,8 +1732,8 @@
     var _box = function() { return _box_data; };
     return _.extend(_box, {
       stringify: function() { return JSON.stringify(_box_data); },
-      select_todo: select_todo,
-      sel: select_todo,
+      select: select,
+      sel: select,
       set: function(el, val) {
         return help_result(_.set(_box_data, make_sel(el), val), _box);
       },
@@ -1798,7 +1807,7 @@
     });
     function select(el) {
       if (!el || likearr(el) && !el.length) return ;
-      return _.select_todo(_box_data, make_sel(el));
+      return _.select(_box_data, make_sel(el));
     }
     function make_sel(el) {
       return _.isString(el) ? el : _.isArray(el) ? map(el, function(val) {

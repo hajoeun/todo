@@ -792,8 +792,8 @@
   _.sum = _.pipe(
     _.map,
     function(list) {
-      var i = 0, result = list[0];
-      while (++i < list.length) result += list[i];
+      var i = 0, result = list[0], len = list.length;
+      while (++i < len) result += list[i];
       return result;
     });
 

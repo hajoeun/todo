@@ -56,7 +56,7 @@
            return _.filter(local_db, function(d) { return d.completed });
          return local_db;
        },
-       t_list,
+       t_list, _.if(_.is_empty, _.c('')).else(_.idtt),
        $.html_to($1('.todo-list')));
       }, counter);
 
@@ -129,8 +129,8 @@
     $.on('click', '.toggle-all', __(
       _.c('.todo-list li:not(.completed)'), $,
       _.if(_.l("localStorage.route === 'all'"),
-        $.add_class('completed'))
-        .else($.remove),
+        _each($.add_class('completed')))
+        .else(_each($.remove)),
       _.cb(function(id, next) {
         web_sql.transaction(function(tx) {
           tx.executeSql('UPDATE todos SET completed=1 WHERE completed=0', [], function() { next(local_db) }, _.loge)
@@ -142,7 +142,7 @@
 
     $.on('click', 'ul.filters li a', __(
       _.val('$currentTarget'),
-      _.tap(_.c('a.selected'), $, $.remove_class('selected')),
+      _.tap(_.c('a.selected'), $, _each($.remove_class('selected'))),
       $.add_class('selected'),
       $.attr('id'),
       router)),
@@ -155,7 +155,7 @@
       function() { local_db = _.reject(local_db, function(d) { return d.completed }) },
       counter,
       _.c('ul.todo-list li'), $,
-      $.remove('.completed')))
+      _each($.remove('.completed'))))
   );
 
 }(window);

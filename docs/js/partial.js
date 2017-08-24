@@ -1,4 +1,4 @@
-// Partial.js 1.0.0
+// Partial.js 1.0.2
 // Project Lead - Indong Yoo
 // Maintainers - Piljung Park, Hanah Choi
 // Contributors - Joeun Ha, Byeongjin Kim, Jeongik Park
@@ -388,7 +388,7 @@
     return values;
   };
   _.toArray = _.to_array = function(obj) {
-    return likearr(obj) ? slice.call(obj) : _.values(obj);
+    return _.isArray(obj) ? obj : likearr(obj) ? slice.call(obj) : _.values(obj);
   };
   _.keyval = _.obj = _.object = function f(list, vals) {
     if (_.isString(list)) {
@@ -790,20 +790,20 @@
   };
 
   _.sum = function f(data) {
-    if (_.is_function(data) || typeof data == 'string') return _(f, ___, data);
-    var sep = arguments[arguments.length-1];
-    if (!_.is_function(sep = typeof sep == 'string' ? sep : null))
-      arguments[sep ? arguments.length -1 : arguments.length++] = _.idtt;
-
+    if (_.is_function(data)) return _(f, ___, data);
+    if (!_.is_function(arguments[arguments.length-1])) arguments[arguments.length++] = _.idtt;
     return _.go(_.to_mr(arguments),
       _.map,
       function(list) {
         if (!list.length) return;
         var i = 0, result = list[0], len = list.length;
-        if (sep) while (++i < len) result += (sep + list[i]);
-        else while (++i < len) result += list[i];
+        while (++i < len) result += list[i];
         return result;
       });
+  };
+
+  _.join = function f(arr, sep) {
+    return (arguments.length == 0 || typeof arr == "string") ? _(f, _, arr) : _.toArray(arr).join(sep);
   };
 
   var _reduce_async = function f(data, iter, keys, mp, i) {
@@ -1290,6 +1290,11 @@
     for (var i = 0, l = getLength(data); i < l; i++)
       if (tmp.indexOf(cmp[i]) == -1) { tmp.push(cmp[i]); res.push(data[i]); }
     return res;
+  };
+
+  _.append = function(arr, item) {
+    for (var i = 1, l = arguments.length; i < l; i++) arr[arr.length++] = arguments[i];
+    return arr;
   };
 
   function getLength(list) { return list == null ? void 0 : list.length; }

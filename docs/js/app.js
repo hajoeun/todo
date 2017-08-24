@@ -33,10 +33,10 @@
         | & \
         a[] Don.js'),
 
-    t_list = _(_.sum, _, _.t('d', '\
-      li.{{d.completed ? "completed" : ""}}[data-id={{d.id}}] \
-        input.toggle[type=checkbox {{d.completed ? "checked" : ""}}]\
-        label {{d.title}}\
+    t_list = _.sum(_.t$('\
+      li.{{$.completed ? "completed" : ""}}[data-id={{$.id}}] \
+        input.toggle[type=checkbox {{$.completed ? "checked" : ""}}]\
+        label {{$.title}}\
         button.delete')),
 
     counter = function() {
@@ -87,7 +87,7 @@
               });
             });
           }),
-          _.tap(function(data) { local_db.push(data); }, counter),
+          _.tap(function(data) { local_db.push(data); return local_db; }, counter),
           _.if(_.l("localStorage.route !== 'completed'"),
             __(_.wrap_arr, t_list, $.append_to('.todo-list'))))
       }
@@ -128,9 +128,8 @@
 
     $.on('click', '.toggle-all', __(
       _.c('.todo-list li:not(.completed)'), $,
-      _.if(_.l("localStorage.route === 'all'"),
-        _each($.add_class('completed')))
-        .else(_each($.remove)),
+      _.if(_.l("localStorage.route === 'all'"), $.add_class('completed'))
+        .else($.remove),
       _.cb(function(id, next) {
         web_sql.transaction(function(tx) {
           tx.executeSql('UPDATE todos SET completed=1 WHERE completed=0', [], function() { next(local_db) }, _.loge)
@@ -142,7 +141,7 @@
 
     $.on('click', 'ul.filters li a', __(
       _.val('$currentTarget'),
-      _.tap(_.c('a.selected'), $, _each($.remove_class('selected'))),
+      _.tap(_.c('a.selected'), $, $.remove_class('selected')),
       $.add_class('selected'),
       $.attr('id'),
       router)),
@@ -155,7 +154,7 @@
       function() { local_db = _.reject(local_db, function(d) { return d.completed }) },
       counter,
       _.c('ul.todo-list li'), $,
-      _each($.remove('.completed'))))
+      $.remove('.completed')))
   );
 
 }(window);

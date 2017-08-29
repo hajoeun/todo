@@ -1,10 +1,10 @@
 !function(window) {
-  var $ = window.D, $1 = window.D1, _ = window._, local_db, web_sql;
+  let $ = window.D, $1 = window.D1, _ = window._, local_db, web_sql;
 
   web_sql = openDatabase('todoDB', '1', 'todo database', 5 * 1024 * 1024);
-  web_sql.transaction(function(tx) { tx.executeSql('CREATE TABLE IF NOT EXISTS todos(id INTEGER, title TEXT, completed INTEGER)', []); });
+  web_sql.transaction(tx => tx.executeSql('CREATE TABLE IF NOT EXISTS todos(id INTEGER, title TEXT, completed INTEGER)', []));
 
-  var template = _.t('', '\
+  let template = _.t('', '\
     section.todoapp\
       header.header\
         h1 todos\
@@ -39,55 +39,55 @@
         label {{$.title}}\
         button.delete')),
 
-    counter = function() {
-      var len = _.reject(local_db, function(d) { return d.completed }).length;
-      $.text($('.todo-count'),  _.s('l', '{{l}} ' +  (len < 2 ? 'item' : 'items') + ' left')(len));
-    },
+    filter_active = _.reject(d => d.completed),
+    filter_completed = _.negate(filter_active),
 
-    router = _.tap(function(state) {
-      !localStorage.route && (localStorage.route = 'all');
-      if (typeof state == 'string') localStorage.route = state;
+    counter = __(
+      () => local_db,
+      filter_active,
+      actives => actives.length,
+      _.all(
+        _.s$('{{$}} {{$ < 2 ? "item" : "items"}} left'),
+        _.c('.todo-count')
+      ),
+      $.text_to),
 
-      _.go(localStorage.route,
-       function(state) {
-         if (state === 'active')
-           return _.filter(local_db, function(d) { return !d.completed });
-         if (state === 'completed')
-           return _.filter(local_db, function(d) { return d.completed });
-         return local_db;
-       },
-       t_list, _.if(_.is_empty, _.c('')).else(_.idtt),
-       $.html_to($1('.todo-list')));
-      }, counter);
+    router = _.tap(
+      state => {
+        if (!localStorage.route) localStorage.route = 'all';
+        return typeof state === 'string' ?
+          (localStorage.route = state) : localStorage.route;
+      },
+      state => {
+        if (state === 'active') return filter_active(local_db);
+        if (state === 'completed') return filter_completed(local_db);
+        return local_db;
+      },
+      _.all(t_list, _.c('.todo-list')),
+      $.html_to,
+      counter);
 
 
-  _.go("",
-    function() {
-    return new Promise(function(next) {
-      web_sql.transaction(function(tx) {
-        tx.executeSql('select * from todos', [], function(t, res) {
-          next(local_db = _.to_array(res.rows));
-        });
-      });
-    })},
-    template, $.el,
+  _.each($('body.todo'), __(
+    () => new Promise(next =>
+      web_sql.transaction(tx =>
+        tx.executeSql('select * from todos', [],
+          (t, res) => next(local_db = _.to_array(res.rows))))),
+    template,
     $.append_to('body'),
     router,
 
-    $.on('keypress', '.new-todo', function(e) {
-      var value = $.val(e.$currentTarget);
+    $.on('keypress', '.new-todo', e => {
+      let value = $.val(e.$currentTarget);
       if (value && e.keyCode == 13) {
         $.val(e.$currentTarget, '');
         _.go(value,
-          _.cb(function(text, next) {
-            web_sql.transaction(function(tx) {
-              var id = Date.now();
-              tx.executeSql('INSERT INTO todos (id, title, completed) VALUES (?,?,?)', [id, text, 0], function() {
-                next({ id: id, title: text, completed: 0 });
-              });
-            });
-          }),
-          _.tap(function(data) { local_db.push(data); return local_db; }, counter),
+          _.cb((text, next) => web_sql.transaction(tx => {
+            let id = Date.now();
+            tx.executeSql('INSERT INTO todos (id, title, completed) VALUES (?,?,?)', [id, text, 0],
+              () => next({ id: id, title: text, completed: 0 }));
+          })),
+          _.tap(data => (local_db.push(data), local_db), counter),
           _.if(_.l("localStorage.route !== 'completed'"),
             __(_.wrap_arr, t_list, $.append_to('.todo-list'))))
       }
@@ -98,13 +98,11 @@
       $.closest('li'),
       $.remove,
       $.attr('data-id'),
-      _.cb(function(id, next) {
-        web_sql.transaction(function(tx) {
-          tx.executeSql('delete from todos where id=?', [id], _(next, id), _.loge) })
-      }),
-      function(id) { local_db = _.reject(local_db, function(d) { return d.id == id }) },
-      counter
-    )),
+      _.cb((id, next) =>
+        web_sql.transaction(tx =>
+          tx.executeSql('delete from todos where id=?', [id], _(next, id), _.loge))),
+      id => { local_db = _.reject(local_db, d => d.id == id) },
+      counter)),
 
     $.on('click', '.toggle', __(
       _.val('$currentTarget'),
@@ -113,29 +111,20 @@
         $.toggle_class('completed'))
         .else($.remove),
       $.attr('data-id'),
-      _.cb(function(id, next) {
-        web_sql.transaction(function(tx) {
-          tx.executeSql('select completed from todos where id=?', [id], function(t, res) {
-            t.executeSql('UPDATE todos SET completed=? WHERE id=?', [res.rows[0].completed ? 0 : 1, id], _(next, id), _.loge)
-          })
-        })
-      }),
-      function(id) {
-        _.find(local_db, function(d) {
-          return d.id == id && !void (d.completed = d.completed ? 0 : 1) })
-      },
+      _.cb((id, next) => web_sql.transaction(tx =>
+        tx.executeSql('select completed from todos where id=?', [id], (t, res) =>
+          t.executeSql('UPDATE todos SET completed=? WHERE id=?', [res.rows[0].completed ? 0 : 1, id], _(next, id), _.loge)))),
+      id => _.find(local_db, d => (d.id == id && !void (d.completed = d.completed ? 0 : 1))),
       counter)),
 
     $.on('click', '.toggle-all', __(
       _.c('.todo-list li:not(.completed)'), $,
       _.if(_.l("localStorage.route === 'all'"), $.add_class('completed'))
         .else($.remove),
-      _.cb(function(id, next) {
-        web_sql.transaction(function(tx) {
-          tx.executeSql('UPDATE todos SET completed=1 WHERE completed=0', [], function() { next(local_db) }, _.loge)
-        })
-      }),
-      _.filter(function(d) { return !d.completed && (d.completed = 1) }),
+      _.cb((id, next) =>
+        web_sql.transaction(tx =>
+          tx.executeSql('UPDATE todos SET completed=1 WHERE completed=0', [], () => next(local_db), _.loge))),
+      _.filter(d => (!d.completed && (d.completed = 1))),
       router,
       counter)),
 
@@ -148,13 +137,14 @@
 
     $.on('click', '.clear-completed', __(
       _.c('where completed=1'),
-      _.cb(function(where, next) {
-        web_sql.transaction(function(tx) {
-          tx.executeSql('delete from todos ' + where, [], next, _.loge) })}),
-      function() { local_db = _.reject(local_db, function(d) { return d.completed }) },
+      _.cb((where, next) =>
+        web_sql.transaction(tx =>
+          tx.executeSql('delete from todos ' + where, [], next, _.loge))),
+      () => { local_db = filter_active(local_db) },
       counter,
       _.c('ul.todo-list li'), $,
       $.remove('.completed')))
-  );
+
+  ));
 
 }(window);

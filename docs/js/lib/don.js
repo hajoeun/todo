@@ -1,3 +1,8 @@
+// Don.js 1.0.0
+// Selectors - Piljung Park, Byeongjin Kim
+// Manipulation - Joeun Ha, Jeongik Park
+// Event, Fetch - Indong Yoo
+// (c) 2017 Marpple. MIT Licensed.
 !function(window) {
   var doc = window.document
     , doc_el = doc.documentElement
@@ -87,6 +92,9 @@
   function _contains(arr, value) {
     return arr && arr.indexOf(value) != -1;
   }
+  function _has(obj, key) {
+    return obj != null && Object.hasOwnProperty.call(obj, key);
+  }
   function _flat(new_arr, arr, noDeep, start) {
     _each(arr, function(v) {
       if (!_like_arr(v) || (!Array.isArray(v) && !(!!(v && v.callee)))) return new_arr.push(v);
@@ -106,6 +114,12 @@
   }
   function not_match_func(el, selector) {
     return !match_func(el, selector);
+  }
+  function _defaults() {
+    for (var i = 1, len = arguments.length, obj1 = arguments[0], s; i < len; i++)
+      if (obj1 && (s = arguments[i])) for (var key in s) if (!_has(obj1, key)) obj1[key] = s[key];
+    if (obj1) delete obj1._memoize;
+    return obj1;
   }
 
   // don.js
@@ -138,15 +152,16 @@
         return el && results.indexOf(el) == -1;
       };
     }
-    function make_string_selector(sel_arr, root) {
-      if (!root.nodeType) return [];
-      var i = 0, len = sel_arr.length, results, is_root_id = !!root.id;
+    function make_string_selector(sel_arr, root, __$) {
+      if (!root.nodeType) return ;
+      var i = 0, len = sel_arr.length, is_root_id = !!root.id;
       if (!is_root_id) root.id = don_uid();
       for (var _sel_arr = []; i < len;) _sel_arr.push('#' + root.id + ' ' + sel_arr[i++]);
-      results = _$(_sel_arr.join(','), root.parentNode || doc, true);
+      return __$(_sel_arr.join(','), root.parentNode || doc, true);
       // if (!is_root_id) root.removeAttribute('id'); 그냥 id없으면 id강제로 넣어버려
-      return results;
+      // return results;
     }
+
     var filter_or_not = function f(els, selector, func) {
       if (typeof els == 'string') return _(f, _, els, func);
       if (els == null) return;
@@ -200,6 +215,14 @@
         if ((_el = els[i]) && (el = _el.closest(selector)) && results.indexOf(el) == -1) results.push(el);
       return results;
     };
+    $.closest2 = function f(els, selector) {
+      if (arguments.length == 1) return _(f, _, els);
+      if (els == null) return;
+      if (!_like_arr(els)) return match_func(els, selector) ? els : $.find1(els, selector);
+      for (var i = 0, results = [], len = els.length, _el, el; i < len; i++)
+        if ((_el = els[i]) && (el = match_func(_el, selector) ? _el : $.find1(_el, selector)) && results.indexOf(el) == -1) results.push(el);
+      return results;
+    };
     $.contains = doc_el.contains ?
       function(parent, node) {
         var _parent = parent.nodeType === 9 ? parent.documentElement : parent,
@@ -236,9 +259,8 @@
       if (!_like_arr(parent_els)) parent_els = [parent_els];
       var p_els_len = _length(parent_els),
         selector_is_string = typeof selector == 'string',
-        selector_split = selector_is_string && selector.split(','),
         selector_func =  selector_is_string ? function(root) {
-          return make_string_selector(selector_split, root)
+          return make_string_selector(selector.split(','), root, _$) || [];
         } : function(root) {
           return _$(selector, root);
         };
@@ -250,7 +272,14 @@
     $.find1 = function f(parent_els, selector) {
       if (arguments.length == 1 && (typeof parent_els == 'string')) return _(f, _, parent_els);
       if (parent_els == null) return;
-      return $.find(parent_els, selector)[0];
+      if (_like_arr(parent_els)) parent_els = parent_els[0];
+      var selector_is_string = typeof selector == 'string',
+        selector_func =  selector_is_string ? function(root) {
+          return make_string_selector(selector.split(','), root, _$1);
+        } : function(root) {
+          return _$1(selector, root);
+        };
+      return selector_func(define_root(parent_els));
     };
     $.has = function f(els, selector) {
       if (arguments.length == 1) return _(f, _, els);
@@ -347,7 +376,7 @@
         else
           return _push_apply(root.querySelectorAll(selector), results);
       else if (_is_node(selector))
-        return _is_node(root) && $.contains(root, selector) ? results.push(selector) : results;
+        return _is_node(root) && $.contains(root, selector) ? _push_apply(selector, results) : results;
       else if (!selector_is_string && _like_arr(selector))
       // return _push_apply(selector, results);
         if (!_is_node(root)) return _push_apply(selector, results);
@@ -358,7 +387,7 @@
 
     function _$1(selector, root, _selector_is_string) {
       var m, match, doc_or_frag, selector_is_string = _selector_is_string || typeof selector == 'string';
-      if (!root || !selector || (selector_is_string && !selector.trim())) return ;
+      if (!root || !selector || (selector_is_string && !selector.trim())) return;
       else if (selector_is_string)
         if (!(match = rquick_expr.exec(selector)))
           return root.querySelector(selector) || undefined;
@@ -400,7 +429,7 @@
     function _get_win(els) { return _is_win_el_or_els(els) ? window : _check_doc(els) ? window : false; }
     function _is_document(obj) { return obj != null && obj.nodeType == 9; }
     function _check_doc(els) { return _is_document(els) || _is_document(els[0]) }
-    function _is_el_or_els(els) { return _is_node(els) || _is_node(els[0]) }
+    function _is_el_or_els(els) { return els !== undefined && (_is_node(els) || (Array.isArray(els) && (!els.length || _is_node(els[0])))); }
 
     function _check_boxSizing (el) { return $.css(el, 'boxSizing') == 'border-box'; }
     function _display_is_none (el) { return $.css(el, 'display') == 'none'; }
@@ -408,12 +437,12 @@
     function _parse_float_only_numeric(n) { return _is_numeric(n) ? parseFloat(n) : n; }
 
     var class_editor = function f(els, class_name, method) {
-      if (!_is_el_or_els(els) && els.length != 0) return _(f, _, els, method);
+      if (!_is_el_or_els(els)) return _(f, _, els, method);
       if (els == null) return;
       function editor(el, i) {
         var val = _is_fn(class_name) ? class_name(i, el) : class_name;
         if (val)
-          if (/\s/.test(val)) _each(val.split(" "), function(v) { el.classList[method](v); });
+          if (/\s/.test(val)) _each(val.split(" "), function(v) { v && el.classList[method](v); });
           else el.classList[method](val);
         return el;
       }
@@ -432,8 +461,10 @@
     };
 
     $.attr = function f(els, attr_name, attr_value) {
-      if (!_is_el_or_els(els) && els.length != 0) return arguments.length == 1 ? _(f, _, els) : _(f, _, els, attr_name);
       if (els == null) return;
+      if (!_is_el_or_els(els))
+        if (arguments.length == 1) return _(f, _, els);
+        else if (arguments.length == 2) return _(f, _, els, attr_name);
 
       if (_is_fn(attr_value)) {
         function exec_fn(el, i) { return f(el, attr_name, attr_value(i, el.getAttribute(attr_name), el)) }
@@ -458,7 +489,7 @@
       if (attr_value === null) return $.remove_attr(els, attr_name);
 
       function set_iter(el) { return el.setAttribute(attr_name, attr_value); }
-      return _like_arr(els) ? _each(els, set_iter) : set_iter(els);
+      return _like_arr(els) ? _each(els, set_iter) : set_iter(els), els;
     };
 
     $.remove_attr = $.removeAttr = function f(els, attr_name) {
@@ -484,6 +515,12 @@
       "zoom": true
     };
 
+    function toCamel(str) {
+      return str.replace(/-([a-z])/g, function(all, letter){
+        return letter.toUpperCase();
+      });
+    }
+
     function check_css_num(value, p_name) {
       if (_is_numeric(value)) return css_number[p_name] ? value : value + "px";
       return value;
@@ -491,19 +528,24 @@
 
     $.css = function f(els, prop_name, prop_value) {
       if (els == null) return;
-      if (!_is_el_or_els(els) && els.length != 0) return arguments.length == 1 ? _(f, _, els) : _(f, _, els, prop_name);
+      if (!_is_el_or_els(els))
+        if (arguments.length == 1) return _(f, _, els);
+        else if (arguments.length == 2) return _(f, _, els, prop_name);
 
       if (arguments.length == 2 && prop_name.length != null) {
         var get_iter = Array.isArray(prop_name) ?
-          function(el) { return prop_name.reduce(function(o, p) { o[p] = el.ownerDocument.defaultView.getComputedStyle(el, null)[p]; return o; }, {}) } :
-          function(el) { return el.ownerDocument.defaultView.getComputedStyle(el, null)[prop_name]; };
+          function(el) { return prop_name.reduce(function(o, p) { p = toCamel(p); o[p] = el.ownerDocument.defaultView.getComputedStyle(el, null)[p]; return o; }, {}) } :
+          function(el) { return el.ownerDocument.defaultView.getComputedStyle(el, null)[toCamel(prop_name)]; };
         return _like_arr(els) ? _map(els, get_iter) : get_iter(els);
       }
 
       var set_iter = _is_str(prop_name) ? function(el, i) {
         var val = _is_fn(prop_value) ? prop_value(i, el) : prop_value;
-        if (val) el.style[prop_name] = check_css_num(val, prop_name);
-      } : function(el) { _each2(prop_name, function(attr, name) { el.style[name] = check_css_num(attr, name); }) };
+        prop_name = toCamel(prop_name);
+        el.style[prop_name] = check_css_num(val, prop_name);
+      } : function(el) { _each2(prop_name, function(attr, name) {
+        name = toCamel(name);
+        el.style[name] = check_css_num(attr, name); }) };
 
       return _like_arr(els) ? _each(els, set_iter) : set_iter(els), els;
     };
@@ -517,7 +559,12 @@
         else if (!match_sel(els)) return els;
       }
 
-      function remove_child(el) { return el.parentNode.removeChild(el) }
+      function remove_child(el) {
+        if (!el.parentNode) return;
+        el.parentNode.removeChild(el);
+        $.off($.trigger(el, 'removed'));
+        return el;
+      }
       return _like_arr(els) ? _each(els, remove_child) : remove_child(els);
     };
 
@@ -552,15 +599,21 @@
     $.htmlTo = $.html_to = _(html_to_or_text_to, _, _, $.html);
 
     function make_insert(type, reverse) {
+
       function insert(target, elem) {
         var last = target.length - 1 || 0;
         var fns = {
-          append: function(te, i) { return te.appendChild(last == i ? elem : elem.cloneNode(true)) },
-          prepend: function(te, i) { return te.insertBefore(last == i ? elem : elem.cloneNode(true), te.firstChild) },
+          append: function(te, i) {
+            if (te.nodeName == 'TABLE') te = te.firstChild;
+            return te.appendChild(last == i ? elem : elem.cloneNode(true))
+          },
+          prepend: function(te, i) {
+            if (te.nodeName == 'TABLE') te = te.firstChild;
+            return te.insertBefore(last == i ? elem : elem.cloneNode(true), te.firstChild)
+          },
           after: function(te, i) { return te.parentNode.insertBefore(last == i ? elem : elem.cloneNode(true), te.nextSibling) },
           before: function(te, i) { return te.parentNode.insertBefore(last == i ? elem : elem.cloneNode(true), te) }
         };
-
         if (_like_arr(target))
           if (reverse) return _map(target, fns[type]);
           else _each(target, fns[type]);
@@ -571,6 +624,7 @@
       }
 
       return function f(els, content) {
+
         if (arguments.length == 1) return _(f, _, els);
 
         var target = els, elem = content;
@@ -590,10 +644,9 @@
         if (elem == null) return reverse ? elem : target;
         if (_is_str(elem)) {
           if (/^<.*>.*/.test(elem)) {
-            var temp = doc.createElement('div');
-            temp.innerHTML = elem;
-            if (reverse) return f(_map(temp.childNodes, _idtt), target);
-            return f(target, _map(temp.childNodes, _idtt));
+            return reverse ?
+              f($.html_to_el(elem), target) :
+              f(target, $.html_to_el(elem));
           }
           if (reverse) elem = $(elem);
           else return insert(target, doc.createTextNode(elem));
@@ -640,18 +693,21 @@
       if (is_show) {
         function fn(el) {
           if (el.style.display != 'none') {
-            if (el.hidden) el.style.display = get_default_display(el);
+            if (el.hidden || el.ownerDocument.defaultView.getComputedStyle(el, null).display == 'none') {
+              el.style.display = get_default_display(el);
+              $.trigger(el, 'show');
+            }
             return;
           }
-
-          if (el._prev_display) el.style.display = el._prev_display;
-          else el.style.display = '';
+          el.style.display = el._prev_display ? el._prev_display : get_default_display(el);
+          $.trigger(el, 'show');
         }
       } else {
         function fn(el) {
           if (el.style.display == 'none') return;
           if (el.style.display) el._prev_display = el.style.display;
           el.style.display = 'none';
+          $.trigger(el, 'hide');
         }
       }
       return _like_arr(els) ? _each(els, fn) : fn(els), els;
@@ -688,7 +744,6 @@
 
     function wid_hei_fn(wid_hei_type, wid_hei, window_width_type) {
       // wid_hei_type 1: outer, 2: innerWidth, 3: width
-
       function _get_doc_wid_hei(els, wid_hei) {
         var body = els.body || els[0].body;
         return wid_hei == "width" ? Math.max( body.offsetWidth, body.scrollWidth, doc_el.offsetWidth, doc_el.offsetWidth, doc_el.clientWidth )
@@ -705,7 +760,6 @@
             left_top = "Top";
             right_bottom = "Bottom";
           }
-
           var styles = window.getComputedStyle(el),
             width = _display_is_none(el) ? parseFloat(styles.width) : el.getBoundingClientRect()[wid_hei],
             borderLeft_Top = parseFloat(styles["border" + left_top + "Width"]),
@@ -818,7 +872,7 @@
     $.offset = function f(els, options) {
       if (els == null) return;
       // options : function or coordinates
-      if (!_is_el_or_els(els) && els.length != 0) return _(f, _, els);
+      if (!_is_el_or_els(els)) return _(f, _, els);
 
       //setoffset
       if (options) {
@@ -870,7 +924,7 @@
 
     $.val = function f(els, value) {
       if (els == null) return;
-      if (!_is_el_or_els(els) && els.length != 0) return _(f, _, els);
+      if (!_is_el_or_els(els)) return _(f, _, els);
 
       if (arguments.length == 1) {
         function get_iter(el) {
@@ -915,14 +969,24 @@
       return _like_arr(els) ? _each(els, set_iter) : set_iter(els, 0), els;
     };
 
-    $.el = function f(html) {
-      if (!_is_str(html)) return;
-      if (/^<.*>.*/.test(html)) {
-        var div = doc.createElement('div');
-        div.innerHTML = html;
-        return _map(div.children, _idtt);
+    $.html_to_el = function(html) {
+      var els, tmp;
+      if (/^<(tr|th|td).*><\/(tr|th|td)>$/.test(html)) {
+        tmp = doc.createElement('table');
+        tmp.innerHTML = html;
+        tmp = tmp.firstChild;
+        if (RegExp.$1 != 'tr') tmp = tmp.firstChild;
+      } else {
+        tmp = doc.createElement('div');
+        tmp.innerHTML = html;
       }
-      return [doc.createElement(html)];
+      els = _map(tmp.children, _idtt);
+      return _length(els) == 1 ? els[0] : els;
+    };
+
+    $.el = function f(html) {
+      if (!_is_str(html)) return html;
+      return /^<.*>.*/.test(html) ? $.html_to_el(html) : doc.createElement(html);
     };
 
     $.frag = function f(html) {
@@ -937,7 +1001,7 @@
     };
 
     function _scroll_fn(el, val, prop, method) {
-      var top = prop == "pageYOffset" ? true : false;
+      var top = prop == "pageYOffset";
       var win = _get_win( el );
       if (val == undefined) return win ? win[ prop ] : el[ method ];
       if (win) win.scrollTo(!top ? val : win.pageXOffset, top ? val : win.pageYOffset);
@@ -945,12 +1009,14 @@
       return el;
     }
 
-    $.scrollTop = function f(el, val) {
+    $.scrollTop = $.scroll_top = function f(el, val) {
+      if (Array.isArray(el) && el.length == 1) el = el[0];
       if (el == null || (!_is_el_or_els(el) && !_is_win_el_or_els(el))) return;
       return _scroll_fn(el, val, "pageYOffset", "scrollTop");
     };
 
-    $.scrollLeft = function f(el, val) {
+    $.scrollLeft = $.scroll_left = function f(el, val) {
+      if (Array.isArray(el) && el.length == 1) el = el[0];
       if (el == null || (!_is_el_or_els(el) && !_is_win_el_or_els(el))) return;
       return _scroll_fn(el, val, "pageXOffset", "scrollLeft");
     };
@@ -961,6 +1027,7 @@
     var $ = D;
 
     var handlers = {};
+    window.handlers = handlers;
     var specialEvents = {};
     specialEvents.click = specialEvents.mousedown = specialEvents.mouseup = specialEvents.mousemove = 'MouseEvents';
 
@@ -974,6 +1041,7 @@
     }
 
     function parse(event) {
+      if (!event) return {};
       var dotIndex = event.indexOf('.');
       if (dotIndex > 0) {
         return {
@@ -1008,7 +1076,7 @@
       if (!el._dtId) return el;
       var elHandlers = handlers[getDtId(el)];
       var matchedHandlers = findHandlers(el, selector, event, callback);
-      matchedHandlers.forEach(function (handler) {
+      matchedHandlers.forEach(function(handler) {
         elHandlers.splice(elHandlers.indexOf(handler), 1);
       });
       return el;
@@ -1016,8 +1084,8 @@
 
     function makeProxy(el, callback) {
       return function(e) {
-        e = compatible(e);
-        e.$delegateTarget = e.$currentTarget = el;
+        e.delegateTarget = e.currentTarget =
+          e.$delegateTarget = e.$currentTarget = el;
         if (e.isImmediatePropagationStopped()) return;
         var result = callback.call(el, e);
         if (result === false) e.preventDefault(), e.stopPropagation();
@@ -1047,10 +1115,10 @@
       });
     }
 
-    function bindEvent(el, selector, event, callback, delegator, once) {
+    function bindEvent(el, selector, event, callback, delegated, once) {
       if (!el) return el;
-      if (_like_arr(el) && !_is_node(el) && el != el.window) return _each(el, function(el) {
-        bindEvent(el, selector, event, callback, delegator, once);
+      if (_like_arr(el)) return _each(el, function(el) {
+        bindEvent(el, selector, event, callback, delegated, once);
       });
 
       var id = getDtId(el);
@@ -1059,16 +1127,17 @@
       handler.callback = callback;
 
       // emulate mouseenter, mouseleave
-      if (!delegator && handler.e in hover) callback = function(e) {
+      if (!delegated && handler.e in hover) callback = function(e) {
         var related = e.relatedTarget;
         if (!related || (related !== el && !$.contains(el, related)))
           return handler.callback.apply(el, arguments);
       };
 
-      var proxy = makeProxy(el, delegator || callback);
+      var proxy = makeProxy(el, delegated ? make_delegator(el, selector, callback, handler.e in hover) : callback);
       handler.selector = selector;
-      handler.delegated = !!delegator;
-      handler.delegator = once ? delegator ? function(e) {
+      handler.delegated = delegated;
+
+      handler.delegator = once ? delegated ? function(e) {
         proxy(e);
         e.$delegate_called && $.off(el, event, selector, callback);
       } : function(e) {
@@ -1077,13 +1146,17 @@
       } : proxy;
 
       elHandlers.push(handler);
-      if (findHandlers(el, null, handler.e).length > 1) return el;
+      if (el["_don_event_" + realEvent(handler.e)]) return el;
 
+      el["_don_event_" + realEvent(handler.e)] = true;
       el.addEventListener(realEvent(handler.e), function(e) {
+        e = compatible(e);
         _each(sortDelegate(findHandlers(el, null, handler.e, null, true), el, e.target), function(d) {
-          d.handler.delegator(e);
+          d.handler.delegator(_defaults({ originalEvent: e }, e));
         });
-        _each(findHandlers(el, null, handler.e, null, false), function(handler) { handler.delegator(e); });
+        _each(findHandlers(el, null, handler.e, null, false), function(handler) {
+          handler.delegator(_defaults({ originalEvent: e }, e));
+        });
       }, false);
 
       return el;
@@ -1104,7 +1177,7 @@
       _each2(eventMethods, function(predicate, name) {
         var eventMethod = event[name];
         event[name] = function() {
-          this[predicate] = returnTrue;
+          event[predicate] = returnTrue;
           return eventMethod && eventMethod.apply(event, arguments);
         };
         event[predicate] = returnFalse;
@@ -1112,15 +1185,17 @@
 
       event.timeStamp || (event.timeStamp = Date.now());
 
-      if (event.defaultPrevented !== undefined ? event.defaultPrevented :
-          'returnValue' in event ? event.returnValue === false :
+      if (event.defaultPrevented !== undefined ?
+          event.defaultPrevented :
+          'returnValue' in event ?
+            event.returnValue === false :
             event.getPreventDefault && event.getPreventDefault()) {
         event.isDefaultPrevented = returnTrue;
       }
       return event;
     }
 
-    function delegator(el, selector, callback, is_hover) {
+    function make_delegator(el, selector, callback, is_hover) {
       return function(e) {
         if (e.isPropagationStopped()) return;
         var els = $.find(el, selector);
@@ -1128,8 +1203,8 @@
         for (var i = 0, l = els.length; i < l; i++) {
           var child = els[i];
           if (child === e.target || $.contains(child, e.target)) {
-            e.$currentTarget = matched = child;
-            e.$delegateTarget = el;
+            e.currentTarget = e.$currentTarget = matched = child;
+            e.delegateTarget = e.$delegateTarget = el;
             break;
           }
         }
@@ -1152,9 +1227,9 @@
       if (el == null) return;
       if (arguments.length == 2) return _(on, _, el, eventType);
       if (arguments.length == 3) return _is_str(el) ?
-        _(on, _, el, eventType, cb_or_sel) : bindEvent(el, null, eventType, cb_or_sel);
+        _(on, _, el, eventType, cb_or_sel) : bindEvent(el, null, eventType, cb_or_sel, false);
 
-      return bindEvent(el, cb_or_sel, eventType, callback2, delegator(el, cb_or_sel, callback2, parse(eventType).e in hover));
+      return bindEvent(el, cb_or_sel, eventType, callback2, true);
     };
 
     $.off = function off(el, eventType, callback, callback2) {
@@ -1173,7 +1248,7 @@
         _(once, _, el, eventType, cb_or_sel) :
         bindEvent(el, null, eventType, cb_or_sel, false, true);
 
-      return bindEvent(el, cb_or_sel, eventType, callback2, delegator(el, cb_or_sel, callback2, parse(eventType).e in hover), true);
+      return bindEvent(el, cb_or_sel, eventType, callback2, true, true);
     };
 
     $.trigger = function trigger(el, eventType, props) {
@@ -1184,6 +1259,7 @@
         triggerHandler(el, makeEvent(eventType, props));
       });
       triggerHandler(el, makeEvent(eventType, props));
+      return el;
     };
 
     function triggerHandler(el, e) {
@@ -1200,7 +1276,10 @@
     }
 
     function fetch_to_json(fetched) {
-      return fetched.then(function(res) { return res.json() });
+      return fetched.then(function(res) {
+        if (!res.ok) return Promise.reject(res);
+        return res.json();
+      });
     }
 
     function ajax_method(method, url, data) {
@@ -1222,39 +1301,47 @@
     $.delete = $.del = _(ajax_method, 'DELETE');
 
     $.upload = function(input_or_form, opt) {
-      return new Promise(function(resolve) {
-        if (input_or_form == null) return;
+      opt = opt || {};
+      return new Promise(function(resolve, reject) {
+        if (input_or_form == null) return reject('input or form Not existed');
         if (input_or_form.nodeName == 'INPUT') {
           var formData = new FormData();
           var files = input_or_form.files;
           for (var i = 0, file; file = files[i]; ++i) formData.append(file.name, file);
         } else {
-          var formData = new FormData(input_or_form);
+          // var formData = new FormData(input_or_form);
+          var formData = input_or_form;
         }
-        var is_multiple = input_or_form.multiple;
+        var is_multiple = opt.is_multiple || input_or_form.multiple;
         var input_or_form2 = $.el(input_or_form.outerHTML);
         $.before(input_or_form, input_or_form2);
         $.remove(input_or_form);
 
-        var xhr = new XMLHttpRequest(), url = $.UPLOAD_URL || '/api/file';
+        var xhr = new XMLHttpRequest(), url = $.UPLOAD_URL || '/@api/file';
         if (opt) {
-          _each(opt.data, function(val, key) { formData.append(key, val); });
+          _each2(opt.data, function(val, key) { formData.append(key, val); });
           url = opt.url || url;
           if (opt.progress) xhr.upload.onprogress = function(e) {
             e.lengthComputable && opt.progress((e.loaded / e.total) * 100, e);
           };
         }
         xhr.open('POST', url, true);
-        xhr.onload = function(e) {
+        xhr.onload = function() {
           var data = JSON.parse(xhr.response);
-          return resolve(is_multiple ? data : data[0] || data);
+          return (xhr.status >=200 && xhr.status < 300) || xhr.status == 304 ?
+            resolve(is_multiple ? data : data[0] || data) : reject(xhr);
         };
         xhr.send(formData);  // multipart/form-data
       });
     };
 
+    $.upload2 = function(input_or_form, opt) {
+      opt.is_multiple = true;
+      return $.upload(input_or_form, opt);
+    };
+
     function append_query(url, query) {
-      return query == '' ? url : (url + '&' + query).replace(/[&?]{1,2}/, '?');
+      return query ? (url + '&' + query).replace(/[&?]{1,2}/, '?') : url;
     }
 
     $.param = function(a) {

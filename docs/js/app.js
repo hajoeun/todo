@@ -12,7 +12,7 @@
         h1 todos
         input.new-todo[placeholder='What needs to be done?' autofocus]
        section.main
-        input.toggle-all[type=checkbox]
+        input.toggle-all[type=checkbox].${_.every(local_db, _.v('completed')) ? 'checked' : ''}
         label[for='toggle-all'] Mark all as complete
         ul.todo-list
       footer.footer
@@ -35,10 +35,10 @@
       p Powered by 
         a[href=https://github.com/marpple] MARPPLE`;
 
-  let todo_list_template = _.sum(state => pug`
-    li.${state.completed ? 'completed' : ''}[data-id=${state.id}]
-      input.toggle[type=checkbox ${state.completed ? 'checked' : ''}]
-      label ${state.title}
+  let todo_list_template = _.sum(item => pug`
+    li.${item.completed ? 'completed' : ''}[data-id=${item.id}]
+      input.toggle[type=checkbox ${item.completed ? 'checked' : ''}]
+      label ${item.title}
       button.delete`);
 
   let filter_active = _.reject(d => d.completed);
@@ -51,6 +51,11 @@
     l => `${l} ${l < 2 ? 'item' : 'items'} left`,
     $.text_to('.todo-count'));
 
+  let render = _.tap(
+    todo_list_template,
+    $.html_to('.todo-list')
+  );
+
   let router = _.tap(
     state => {
       if (!localStorage.route) localStorage.route = 'all';
@@ -62,8 +67,7 @@
       if (state === 'completed') return filter_completed(local_db);
       return local_db;
     },
-    todo_list_template,
-    $.html_to('.todo-list'),
+    render,
     counter);
 
 
@@ -87,25 +91,27 @@
               () => next({ id: id, title: text, completed: 0 }));
           })),
           _.tap(data => (local_db.push(data), local_db), counter),
-          _.if(_.l("localStorage.route !== 'completed'"))(
-            _.wrap_arr, todo_list_template, $.append_to('.todo-list'))
+          _.if(_.l("localStorage.route !== 'completed'")) (
+            _.wrap_arr,
+            todo_list_template,
+            $.append_to('.todo-list'))
         )
       }
     }),
 
     $.on('click', '.delete', __(
-      _.val('currentTarget'),
+      _.v('currentTarget'),
       $.closest('li'),
       $.remove,
       $.attr('data-id'),
       _.cb((id, next) =>
         web_sql.transaction(tx =>
           tx.executeSql('delete from todos where id=?', [id], _(next, id), _.loge))),
-      id => { local_db = _.reject(local_db, d => d.id == id) },
+      id => (local_db = _.reject(local_db, db => db.id == id)),
       counter)),
 
     $.on('click', '.toggle', __(
-      _.val('currentTarget'),
+      _.v('currentTarget'),
       $.closest('li'),
       _.if(_.l("localStorage.route === 'all'"))(
         $.toggle_class('completed')
@@ -114,23 +120,33 @@
       _.cb((id, next) => web_sql.transaction(tx =>
         tx.executeSql('select completed from todos where id=?', [id], (t, res) =>
           t.executeSql('UPDATE todos SET completed=? WHERE id=?', [res.rows[0].completed ? 0 : 1, id], _(next, id), _.loge)))),
-      id => _.find(local_db, d => (d.id == id && !void (d.completed = d.completed ? 0 : 1))),
+      id => _.find(local_db, db => (db.id == id && !void (db.completed = db.completed ? 0 : 1))),
       counter)),
 
-    $.on('click', '.toggle-all', __(
-      _.c('.todo-list li:not(.completed)'), $,
-      _.if(_.l("localStorage.route === 'all'"))(
-        $.add_class('completed')
-      ).else($.remove),
-      _.cb((id, next) =>
+    $.on('click', '.toggle-all:not(.checked)', __(
+      _.v('currentTarget'),
+      $.add_class('checked'),
+      _.$('.todo-list li:not(.completed)'),
+      $.add_class('completed'),
+      _.cb((e, next) =>
         web_sql.transaction(tx =>
           tx.executeSql('UPDATE todos SET completed=1 WHERE completed=0', [], () => next(local_db), _.loge))),
-      _.filter(d => (!d.completed && (d.completed = 1))),
-      router,
-      counter)),
+      _.each(db => (!db.completed && (db.completed = 1))),
+      router)),
+
+    $.on('click', '.toggle-all.checked', __(
+      _.v('currentTarget'),
+      $.remove_class('checked'),
+      _.$('.todo-list li.completed'),
+      $.remove_class('completed'),
+      _.cb((e, next) =>
+        web_sql.transaction(tx =>
+          tx.executeSql('UPDATE todos SET completed=0 WHERE completed=1', [], () => next(local_db), _.loge))),
+      _.each(db => (db.completed && (db.completed = 0))),
+      router)),
 
     $.on('click', 'ul.filters li a', __(
-      _.val('currentTarget'),
+      _.v('currentTarget'),
       _.tap(_.c('a.selected'), $, $.remove_class('selected')),
       $.add_class('selected'),
       $.attr('id'),

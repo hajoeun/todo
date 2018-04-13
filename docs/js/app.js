@@ -12,7 +12,7 @@
         h1 todos
         input.new-todo[placeholder='What needs to be done?' autofocus]
        section.main
-        input.toggle-all[type=checkbox].${_.every(local_db, _.v('completed')) ? 'checked' : ''}
+        input.toggle-all[type=checkbox]
         label[for='toggle-all'] Mark all as complete
         ul.todo-list
       footer.footer

@@ -26,6 +26,8 @@
             a#completed.${localStorage.route == 'completed' ? 'selected' : ''}] Completed
         button.clear-completed Clear completed
     footer.info
+      p Host on 
+        a[href=https://github.com/joeunha/todo] Github
       p Created by 
         a[href=https://www.github.com/joeunha] Joeun Ha
         | & 

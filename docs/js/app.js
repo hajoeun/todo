@@ -32,12 +32,12 @@
         a[href=https://www.github.com/dev-jip] JIP
       p Powered by 
         a[href=https://github.com/marpple] MARPPLE`;
-
-  let todo_list_template = _.sum(item => pug`
+  let todo_item_template = item => pug`
     li.${item.completed ? 'completed' : ''}[data-id=${item.id}]
       input.toggle[type=checkbox ${item.completed ? 'checked' : ''}]
       label ${item.title}
-      button.delete`);
+      button.delete`;
+  let todo_list_template = _.sum(todo_item_template);
 
   let filter_active = _.reject(d => d.completed);
   let filter_completed = _.filter(d => d.completed);
@@ -48,8 +48,7 @@
     _.v('length'),
     l => `${l} ${l < 2 ? 'item' : 'items'} left`,
     $.text_to('.todo-count'));
-
-  let list_router = _.tap(
+  let router = _.tap(
     state => {
       if (!localStorage.route) localStorage.route = 'all';
       return typeof state === 'string' ?
@@ -79,7 +78,7 @@
             (t, res) => next(local_db = _.to_array(res.rows))))),
       section_template,
       $.append_to('body'),
-      list_router),
+      router),
 
     $.on('keypress', '.new-todo', e => {
       let value = $.val(e.currentTarget);
@@ -91,11 +90,11 @@
             tx.executeSql('INSERT INTO todos (id, title, completed) VALUES (?,?,?)', [id, text, 0],
               () => next({ id: id, title: text, completed: 0 }));
           })),
-          _.tap(data => (local_db.push(data), local_db), left_item_counter),
-          _.if(_.l("localStorage.route !== 'completed'")) (
-            _.wrap_arr,
-            todo_list_template,
-            $.append_to('.todo-list')))
+          _.tap(data => local_db.push(data)),
+          _.if(() => localStorage.route !== 'completed') (
+            todo_item_template,
+            $.append_to('.todo-list')),
+          left_item_counter)
       }
     }),
 
@@ -113,7 +112,7 @@
     $.on('click', '.toggle', __(
       _.v('currentTarget'),
       $.closest('li'),
-      _.if(_.l("localStorage.route === 'all'")) (
+      _.if(() => localStorage.route === 'all') (
         $.toggle_class('completed')
       ).else($.remove),
       $.attr('data-id'),
@@ -129,7 +128,7 @@
         web_sql.transaction(tx =>
           tx.executeSql('UPDATE todos SET completed=1 WHERE completed=0', [], () => next(local_db), _.loge))),
       _.each(item => (!item.completed && (item.completed = 1))),
-      list_router)),
+      router)),
 
     $.on('click', '.toggle-all.checked', __(
       change_toggle_all('.todo-list li.completed'),
@@ -137,24 +136,33 @@
         web_sql.transaction(tx =>
           tx.executeSql('UPDATE todos SET completed=0 WHERE completed=1', [], () => next(local_db), _.loge))),
       _.each(item => (item.completed && (item.completed = 0))),
-      list_router)),
+      router)),
 
     $.on('click', 'ul.filters li a', __(
       _.v('currentTarget'),
       _.tap(_.$('a.selected'), $.remove_class('selected')),
       $.add_class('selected'),
       $.attr('id'),
-      list_router)),
+      router)),
 
     $.on('click', '.clear-completed', __(
-      _.c('where completed=1'),
-      _.cb((where, next) =>
+      // () => {
+      //   web_sql.transaction(tx =>
+      //     tx.executeSql(`delete from todos where completed=1`, [], __(
+      //       () => { local_db = filter_active(local_db) },
+      //       left_item_counter,
+      //       _.$('ul.todo-list li'),
+      //       $.remove('.completed')
+      //     ), _.loge))
+      // },
+      _.cb((e, next) =>
         web_sql.transaction(tx =>
-          tx.executeSql(`delete from todos ${where}`, [], next, _.loge))),
+          tx.executeSql('delete from todos where completed=1', [], next, _.loge))),
       () => { local_db = filter_active(local_db) },
       left_item_counter,
       _.$('ul.todo-list li'),
-      $.remove('.completed')))
+      $.remove('.completed')
+    ))
   ));
 
 }(null);

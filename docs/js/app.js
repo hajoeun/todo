@@ -146,15 +146,6 @@
       router)),
 
     $.on('click', '.clear-completed', __(
-      // () => {
-      //   web_sql.transaction(tx =>
-      //     tx.executeSql(`delete from todos where completed=1`, [], __(
-      //       () => { local_db = filter_active(local_db) },
-      //       left_item_counter,
-      //       _.$('ul.todo-list li'),
-      //       $.remove('.completed')
-      //     ), _.loge))
-      // },
       _.cb((e, next) =>
         web_sql.transaction(tx =>
           tx.executeSql('delete from todos where completed=1', [], next, _.loge))),
